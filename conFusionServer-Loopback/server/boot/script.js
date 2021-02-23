@@ -6,7 +6,7 @@ module.exports = function(app) {
 
         if (!users) {
             Customer.create([
-                {username: 'Admin', email: 'admin@confusion.net', password: 'password'}
+                {"username": "Admin", email: 'admin@confusion.net', "password": "password"}
             ], (err, users) => {
                 if (err) throw(err);
                 
