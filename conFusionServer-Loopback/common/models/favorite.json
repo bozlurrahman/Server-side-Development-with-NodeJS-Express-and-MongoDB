@@ -7,7 +7,13 @@
   },
   "properties": {},
   "validations": [],
-  "relations": {},
+  "relations": {
+    "dishes": {
+      "type": "belongsTo",
+      "model": "dishes",
+      "foreignKey": ""
+    }
+  },
   "acls": [],
   "methods": {}
 }
