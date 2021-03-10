@@ -88,7 +88,18 @@ export const addDishes = (dishes) => ({
 });
 
 export const fetchComments = () => (dispatch) => {
-    return fetch(baseUrl + 'api/comments?filter={"include": ["customer"]}')
+    
+    const token = JSON.parse(localStorage.getItem('token'));
+
+    if (!token) {
+        return dispatch(commentsFailed('No User Logged in!'));
+    }
+
+    return fetch(baseUrl + 'api/comments?filter={"include": ["customer"]}', {
+        headers: {
+            'Authorization': token.id
+        },
+    })
         .then(response => {
             if (response.ok) {
                 return response;
