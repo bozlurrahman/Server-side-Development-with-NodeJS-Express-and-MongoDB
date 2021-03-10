@@ -8,21 +8,25 @@ export const addComment = (comment) => ({
 
 export const postComment = (dishId, rating, comment) => (dispatch) => {
 
+    let token = JSON.parse(localStorage.getItem('token'));
+
+    if (!token) {
+        return;
+    }
+
     const newComment = {
-        dish: dishId,
+        dishesId: dishId,
+        customerId: token.userId,
         rating: rating,
         comment: comment
     }
-    console.log('Comment ', newComment);
 
-    const bearer = 'Bearer ' + localStorage.getItem('token');
-
-    return fetch(baseUrl + 'comments', {
+    return fetch(baseUrl + 'api/comments', {
         method: 'POST',
         body: JSON.stringify(newComment),
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': bearer
+            'Authorization': token.id
         },
         credentials: 'same-origin'
     })
@@ -41,7 +45,7 @@ export const postComment = (dishId, rating, comment) => (dispatch) => {
         throw errmess;
     })
     .then(response => response.json())
-    .then(response => dispatch(addComment(response)))
+    .then(response => dispatch(fetchComments()))
     .catch(error => { console.log('Post comments ', error.message);
         alert('Your comment could not be posted\nError: '+ error.message); })
 }
@@ -49,7 +53,7 @@ export const postComment = (dishId, rating, comment) => (dispatch) => {
 export const fetchDishes = () => (dispatch) => {
     dispatch(dishesLoading(true));
 
-    return fetch(baseUrl + 'dishes')
+    return fetch(baseUrl + 'api/dishes')
         .then(response => {
             if (response.ok) {
                 return response;
@@ -84,7 +88,7 @@ export const addDishes = (dishes) => ({
 });
 
 export const fetchComments = () => (dispatch) => {
-    return fetch(baseUrl + 'comments')
+    return fetch(baseUrl + 'api/comments?filter={"include": ["customer"]}')
         .then(response => {
             if (response.ok) {
                 return response;
@@ -117,7 +121,7 @@ export const addComments = (comments) => ({
 export const fetchPromos = () => (dispatch) => {
     dispatch(promosLoading(true));
 
-    return fetch(baseUrl + 'promotions')
+    return fetch(baseUrl + 'api/promotions')
         .then(response => {
             if (response.ok) {
                 return response;
@@ -155,7 +159,7 @@ export const fetchLeaders = () => (dispatch) => {
     
     dispatch(leadersLoading());
 
-    return fetch(baseUrl + 'leaders')
+    return fetch(baseUrl + 'api/leaders')
     .then(response => {
         if (response.ok) {
             return response;
@@ -190,29 +194,6 @@ export const addLeaders = (leaders) => ({
 
 export const postFeedback = (feedback) => (dispatch) => {
         
-    return fetch(baseUrl + 'feedback', {
-        method: "POST",
-        body: JSON.stringify(feedback),
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "same-origin"
-    })
-    .then(response => {
-        if (response.ok) {
-          return response;
-        } else {
-          var error = new Error('Error ' + response.status + ': ' + response.statusText);
-          error.response = response;
-          throw error;
-        }
-      },
-      error => {
-            throw error;
-      })
-    .then(response => response.json())
-    .then(response => { console.log('Feedback', response); alert('Thank you for your feedback!\n'+JSON.stringify(response)); })
-    .catch(error =>  { console.log('Feedback', error.message); alert('Your feedback could not be posted\nError: '+error.message); });
 };
 
 export const requestLogin = (creds) => {
@@ -225,7 +206,7 @@ export const requestLogin = (creds) => {
 export const receiveLogin = (response) => {
     return {
         type: ActionTypes.LOGIN_SUCCESS,
-        token: response.token
+        token: response.id
     }
 }
   
@@ -240,7 +221,7 @@ export const loginUser = (creds) => (dispatch) => {
     // We dispatch requestLogin to kickoff the call to the API
     dispatch(requestLogin(creds))
 
-    return fetch(baseUrl + 'users/login', {
+    return fetch(baseUrl + 'api/Customers/login', {
         method: 'POST',
         headers: { 
             'Content-Type':'application/json' 
@@ -248,7 +229,7 @@ export const loginUser = (creds) => (dispatch) => {
         body: JSON.stringify(creds)
     })
     .then(response => {
-        if (response.ok) {
+        if (response.status === 200) {
             return response;
         } else {
             var error = new Error('Error ' + response.status + ': ' + response.statusText);
@@ -261,9 +242,9 @@ export const loginUser = (creds) => (dispatch) => {
         })
     .then(response => response.json())
     .then(response => {
-        if (response.success) {
+        if (response.id) {
             // If login was successful, set the token in local storage
-            localStorage.setItem('token', response.token);
+            localStorage.setItem('token', JSON.stringify(response));
             localStorage.setItem('creds', JSON.stringify(creds));
             // Dispatch the success action
             dispatch(fetchFavorites());
@@ -293,22 +274,46 @@ export const receiveLogout = () => {
 // Logs the user out
 export const logoutUser = () => (dispatch) => {
     dispatch(requestLogout())
-    localStorage.removeItem('token');
-    localStorage.removeItem('creds');
-    dispatch(favoritesFailed("Error 401: Unauthorized"));
-    dispatch(receiveLogout())
+
+    let token = JSON.parse(localStorage.getItem('token'));
+    return fetch(baseUrl + 'api/Customers/logout?access_token=' + token.id, {
+        method: 'POST'
+    })
+    .then(response => {
+        if (response.status === 204) {
+            // If login was successful, set the token in local storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('creds');
+            // Dispatch the success action
+            dispatch(favoritesFailed("Error 401: Unauthorized"));
+            dispatch(receiveLogout());
+        } else {
+            var error = new Error('Error ' + response.status + ': ' + response.statusText);
+            error.response = response;
+            throw error;
+        }
+        },
+        error => {
+            throw error;
+        })
+    .catch(error => console.log('Logout Error ' + error.message));
+
 }
 
 export const postFavorite = (dishId) => (dispatch) => {
 
-    const bearer = 'Bearer ' + localStorage.getItem('token');
+    let token = JSON.parse(localStorage.getItem('token'));
 
-    return fetch(baseUrl + 'favorites/' + dishId, {
+    if (!token) {
+        return;
+    }
+
+    return fetch(baseUrl + 'api/favorites/', {
         method: "POST",
-        body: JSON.stringify({"_id": dishId}),
+        body: JSON.stringify({dishesId: dishId, customerId: token.userId}),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': bearer
+          'Authorization': token.id
         },
         credentials: "same-origin"
     })
@@ -325,18 +330,22 @@ export const postFavorite = (dishId) => (dispatch) => {
             throw error;
       })
     .then(response => response.json())
-    .then(favorites => { console.log('Favorite Added', favorites); dispatch(addFavorites(favorites)); })
+    .then(favorite => { console.log('Favorite Added', favorite); dispatch(fetchFavorites()); })
     .catch(error => dispatch(favoritesFailed(error.message)));
 }
 
-export const deleteFavorite = (dishId) => (dispatch) => {
+export const deleteFavorite = (id) => (dispatch) => {
 
-    const bearer = 'Bearer ' + localStorage.getItem('token');
+    let token = JSON.parse(localStorage.getItem('token'));
 
-    return fetch(baseUrl + 'favorites/' + dishId, {
+    if (!token) {
+        return;
+    }
+
+    return fetch(baseUrl + 'api/favorites/' + id, {
         method: "DELETE",
         headers: {
-          'Authorization': bearer
+            'Authorization': token.id
         },
         credentials: "same-origin"
     })
@@ -353,21 +362,26 @@ export const deleteFavorite = (dishId) => (dispatch) => {
             throw error;
       })
     .then(response => response.json())
-    .then(favorites => { console.log('Favorite Deleted', favorites); dispatch(addFavorites(favorites)); })
+    .then(favorite => { console.log('Favorite Deleted', favorite); dispatch(fetchFavorites()); })
     .catch(error => dispatch(favoritesFailed(error.message)));
 };
 
 export const fetchFavorites = () => (dispatch) => {
     dispatch(favoritesLoading(true));
 
-    const bearer = 'Bearer ' + localStorage.getItem('token');
+    const token = JSON.parse(localStorage.getItem('token'));
 
-    return fetch(baseUrl + 'favorites', {
+    if (!token) {
+        return dispatch(favoritesFailed('No User Logged in!'));
+    }
+
+    return fetch(baseUrl + 'api/Customers/' + token.userId + '/favorites?filter={"include": ["dishes"]}', {
         headers: {
-            'Authorization': bearer
+            'Authorization': token.id
         },
     })
     .then(response => {
+        console.log(response);
         if (response.ok) {
             return response;
         }

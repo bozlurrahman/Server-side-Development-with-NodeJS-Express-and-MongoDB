@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import { baseUrl } from '../shared/baseUrl';
 import { Loading } from './LoadingComponent';
 
-function RenderMenuItem({ dish, deleteFavorite }) {
+function RenderMenuItem({ favorite, deleteFavorite }) {
+    const dish = favorite.dishes;
     return(
         <Media tag="li">
             <Media left middle>
@@ -13,7 +14,7 @@ function RenderMenuItem({ dish, deleteFavorite }) {
             <Media body className="ml-5">
                 <Media heading>{dish.name}</Media>
                 <p>{dish.description}</p>
-                <Button outline color="danger" onClick={() => deleteFavorite(dish._id)}>
+                <Button outline color="danger" onClick={() => deleteFavorite(favorite.id)}>
                     <span className="fa fa-times"></span>
                 </Button>
             </Media>
@@ -43,10 +44,10 @@ const Favorites = (props) => {
     }
     else if (props.favorites.favorites) {
 
-        const favorites = props.favorites.favorites.dishes.map((dish) => {
+        const favorites = props.favorites.favorites.map((favorite) => {
             return (
-                <div key={dish._id} className="col-12 mt-5">
-                    <RenderMenuItem dish={dish} deleteFavorite={props.deleteFavorite} />
+                <div key={favorite.dishes.id} className="col-12 mt-5">
+                    <RenderMenuItem favorite={favorite} deleteFavorite={props.deleteFavorite} />
                 </div>
             );
         });

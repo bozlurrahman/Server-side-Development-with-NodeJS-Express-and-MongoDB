@@ -25,7 +25,7 @@ function LeaderList(props) {
 
     const leaders = props.leaders.leaders.map((leader) => {
         return (
-            <Fade in key={leader._id}>
+            <Fade in key={leader.id}>
                 <div className="col-12 mt-2">
                         <RenderLeader leader={leader} />
                 </div>
